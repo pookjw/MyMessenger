@@ -16,7 +16,7 @@
 @property (retain, nonatomic, readonly, getter=_user) User *user;
 @property (retain, nonatomic, nullable, getter=_isolated_chat, setter=_isolated_setChat:) Chatroom *isolated_chat;
 
-@property (retain, nonatomic, nullable, getter=_fetchedResultsController, setter=_setFetchedResultsController:) NSFetchedResultsController<Message *> *fetchedResultsController;
+@property (retain, nonatomic, nullable, getter=_isolated_fetchedResultsController, setter=_isolated_setFetchedResultsController:) NSFetchedResultsController<Message *> *isolated_fetchedResultsController;
 
 @property (retain, nonatomic, readonly, getter=_cellRegistration) UICollectionViewCellRegistration *cellRegistration;
 @property (retain, nonatomic, readonly, getter=_composeView) ComposeView *composeView;
@@ -24,6 +24,7 @@
 @end
 
 @implementation MessagesViewController
+@synthesize isolated_fetchedResultsController = _fetchedResultsController;
 @synthesize cellRegistration = _cellRegistration;
 @synthesize composeView = _composeView;
 @synthesize participantsBarButtonItem = _participantsBarButtonItem;
@@ -115,14 +116,13 @@
         objc_setAssociatedObject(cell, key, item, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         
         [item.managedObjectContext performBlock:^{
-            NSAttributedString * _Nullable attributedString = item.attributedString;
+            NSString * _Nullable text = item.text;
             NSString * _Nullable sender = item.user.name;
             
             dispatch_async(dispatch_get_main_queue(), ^{
                 if ([item isEqual:objc_getAssociatedObject(cell, key)]) {
                     UIListContentConfiguration *contentConfiguration = [cell defaultContentConfiguration];
-    //                contentConfiguration.attributedText = attributedString;
-                    contentConfiguration.text = attributedString.string;
+                    contentConfiguration.text = text;
                     contentConfiguration.secondaryText = sender;
                     cell.contentConfiguration = contentConfiguration;
                 }
@@ -155,7 +155,9 @@
         [context performBlock:^{
             Chatroom * _Nullable chat = unretained.isolated_chat;
             if (chat == nil) {
-                completion(@[]);
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    completion(@[]);
+                });
                 return;
             }
             
@@ -236,32 +238,29 @@
 }
 
 - (void)_didTriggerSendButton:(UIButton *)sender {
-    NSAttributedString *attributedText = self.composeView.textView.attributedText;
-    if (attributedText == nil) return;
-    if (attributedText.length == 0) return;
+    NSString *text = self.composeView.textView.text;
+    if (text == nil) return;
+    if (text.length == 0) return;
     
     self.composeView.textView.text = nil;
     
     NSManagedObjectContext *context = DataStack.sharedInstance.backgroundContext;
     
     [context performBlock:^{
-        Chatroom * _Nullable chat = self.isolated_chat;
         User *user = self.user;
         
         NSDate *timestamp = [NSDate now];
         NSError * _Nullable error = nil;
         
-        Chatroom *_chat;
+        Chatroom *chat = self.isolated_chat;
         if (chat == nil) {
-            _chat = [[Chatroom alloc] initWithContext:context];
-            [_chat addUsersObject:user];
+            chat = [[Chatroom alloc] initWithContext:context];
+            [chat addUsersObject:user];
             [_chat autorelease];
-        } else {
-            _chat = chat;
         }
         
         Message *message = [[Message alloc] initWithContext:context];
-        message.attributedString = attributedText;
+        message.text = text;
         message.timestamp = timestamp;
         message.user = user;
         [chat addMessagesObject:message];
@@ -270,7 +269,9 @@
         [context save:&error];
         assert(error == nil);
         
-        self.isolated_chat = _chat;
+        if (self.isolated_chat == nil) {
+            self.isolated_chat = chat;
+        }
     }];
 }
 
@@ -279,8 +280,8 @@
     _chat = [chat retain];
     
     if (chat == nil) {
+        self.isolated_fetchedResultsController = nil;
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.fetchedResultsController = nil;
             [self.collectionView reloadData];
         });
     } else {
@@ -301,8 +302,9 @@
         [fetchedResultsController performFetch:&error];
         assert(error == nil);
         
+        self.isolated_fetchedResultsController = fetchedResultsController;
+        
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.fetchedResultsController = fetchedResultsController;
             [self.collectionView reloadData];
         });
         
@@ -315,11 +317,20 @@
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    return self.fetchedResultsController.fetchedObjects.count;
+    __block NSInteger count;
+    [DataStack.sharedInstance.backgroundContext performBlockAndWait:^{
+        count = self.isolated_fetchedResultsController.fetchedObjects.count;
+    }];
+    return count;
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    return [collectionView dequeueConfiguredReusableCellWithRegistration:self.cellRegistration forIndexPath:indexPath item:[self.fetchedResultsController objectAtIndexPath:indexPath]];
+    __block Message *message;
+    [DataStack.sharedInstance.backgroundContext performBlockAndWait:^{
+        message = [self.isolated_fetchedResultsController objectAtIndexPath:indexPath];
+    }];
+    
+    return [collectionView dequeueConfiguredReusableCellWithRegistration:self.cellRegistration forIndexPath:indexPath item:message];
 }
 
 - (void)controller:(NSFetchedResultsController *)controller didChangeObject:(id)anObject atIndexPath:(NSIndexPath *)indexPath forChangeType:(NSFetchedResultsChangeType)type newIndexPath:(NSIndexPath *)newIndexPath {

@@ -9,12 +9,16 @@
 /* Begin PBXBuildFile section */
 		4F2421972D96D3FC005BA6EA /* CoreData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F2421962D96D3FC005BA6EA /* CoreData.framework */; };
 		4F2422232D96D745005BA6EA /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F2422222D96D745005BA6EA /* UniformTypeIdentifiers.framework */; };
+		4F2422922D97E1FC005BA6EA /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F2422912D97E1FC005BA6EA /* CloudKit.framework */; };
+		4F2422BA2D97F344005BA6EA /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F2422B92D97F344005BA6EA /* UserNotifications.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		4F24216A2D96CC96005BA6EA /* MyMessenger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyMessenger.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4F2421962D96D3FC005BA6EA /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
 		4F2422222D96D745005BA6EA /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
+		4F2422912D97E1FC005BA6EA /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
+		4F2422B92D97F344005BA6EA /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -43,6 +47,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4F2422BA2D97F344005BA6EA /* UserNotifications.framework in Frameworks */,
+				4F2422922D97E1FC005BA6EA /* CloudKit.framework in Frameworks */,
 				4F2422232D96D745005BA6EA /* UniformTypeIdentifiers.framework in Frameworks */,
 				4F2421972D96D3FC005BA6EA /* CoreData.framework in Frameworks */,
 			);
@@ -71,6 +77,8 @@
 		4F2421952D96D3FC005BA6EA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				4F2422B92D97F344005BA6EA /* UserNotifications.framework */,
+				4F2422912D97E1FC005BA6EA /* CloudKit.framework */,
 				4F2422222D96D745005BA6EA /* UniformTypeIdentifiers.framework */,
 				4F2421962D96D3FC005BA6EA /* CoreData.framework */,
 			);

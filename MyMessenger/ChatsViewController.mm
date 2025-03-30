@@ -14,7 +14,7 @@
 #import "MessagesViewController.h"
 
 @interface ChatsViewController () <NSFetchedResultsControllerDelegate>
-@property (retain, nonatomic, nullable, getter=_fetchedResultsController, setter=_setFetchedResultsController:) NSFetchedResultsController<Chatroom *> *fetchedResultsController;
+@property (retain, nonatomic, nullable, getter=_isolated_fetchedResultsController, setter=_isolated_setFetchedResultsController:) NSFetchedResultsController<Chatroom *> *isolated_fetchedResultsController;
 @property (retain, nonatomic, readonly, getter=_cellRegistration) UICollectionViewCellRegistration *cellRegistration;
 @property (retain, nonatomic, readonly, getter=_userBarButtonItem) UIBarButtonItem *userBarButtonItem;
 @property (retain, nonatomic, readonly, getter=_composeBarButtonItem) UIBarButtonItem *composeBarButtonItem;
@@ -22,7 +22,7 @@
 @end
 
 @implementation ChatsViewController
-@synthesize fetchedResultsController = _fetchedResultsController;
+@synthesize isolated_fetchedResultsController = _fetchedResultsController;
 @synthesize cellRegistration = _cellRegistration;
 @synthesize userBarButtonItem = _userBarButtonItem;
 @synthesize composeBarButtonItem = _composeBarButtonItem;
@@ -61,7 +61,7 @@
     [DataStack.sharedInstance.backgroundContext performBlock:^{
         if (DataStack.sharedInstance.isInitialized) {
             NSError * _Nullable error = nil;
-            [self.fetchedResultsController performFetch:&error];
+            [self.isolated_fetchedResultsController performFetch:&error];
             assert(error == nil);
             
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -80,7 +80,7 @@
     [self _isolated_selectAnyUser];
     
     NSError * _Nullable error = nil;
-    [self.fetchedResultsController performFetch:&error];
+    [self.isolated_fetchedResultsController performFetch:&error];
     assert(error == nil);
     
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -290,8 +290,8 @@
     _currentUser = [currentUser retain];
     
     if (currentUser == nil) {
+        self.isolated_fetchedResultsController = nil;
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.fetchedResultsController = nil;
             [self.collectionView reloadData];
         });
     } else {
@@ -309,8 +309,9 @@
         [fetchedResultsController performFetch:&error];
         assert(error == nil);
         
+        self.isolated_fetchedResultsController = fetchedResultsController;
+        
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.fetchedResultsController = fetchedResultsController;
             [self.collectionView reloadData];
         });
         
@@ -323,20 +324,24 @@
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    return self.fetchedResultsController.fetchedObjects.count;
+    __block NSInteger count;
+    [DataStack.sharedInstance.backgroundContext performBlockAndWait:^{
+        count = self.isolated_fetchedResultsController.fetchedObjects.count;
+    }];
+    return count;
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    return [collectionView dequeueConfiguredReusableCellWithRegistration:self.cellRegistration forIndexPath:indexPath item:[self.fetchedResultsController objectAtIndexPath:indexPath]];
+    return [collectionView dequeueConfiguredReusableCellWithRegistration:self.cellRegistration forIndexPath:indexPath item:[NSNull null]];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
-    Chatroom * _Nullable chat = [self.fetchedResultsController objectAtIndexPath:indexPath];
-    if (chat == nil) return;
-    
     NSManagedObjectContext *context = DataStack.sharedInstance.backgroundContext;
     
     [context performBlock:^{
+        Chatroom * _Nullable chat = [self.isolated_fetchedResultsController objectAtIndexPath:indexPath];
+        if (chat == nil) return;
+        
         User *user = self.isolated_currentUser;
         
         dispatch_async(dispatch_get_main_queue(), ^{
