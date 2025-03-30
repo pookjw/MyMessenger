@@ -144,7 +144,10 @@ NSNotificationName const DataStackDidInitializeNotification = @"DataStackDidInit
         recordsToSave = nil;
     } else {
         NSMutableArray<CKRecord *> *records = [NSMutableArray new];
-        NSArray<__kindof NSManagedObject *> *allObjects = [insertedObjects.allObjects arrayByAddingObjectsFromArray:updatedObjects.allObjects];
+        NSArray<__kindof NSManagedObject *> *allObjects = insertedObjects.allObjects;
+        if (allObjects == nil) allObjects = @[];
+        if (updatedObjects != nil) allObjects = [allObjects arrayByAddingObjectsFromArray:updatedObjects.allObjects];
+        
         allObjects = [allObjects filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id  _Nullable evaluatedObject, NSDictionary<NSString *,id> * _Nullable bindings) {
             return ![evaluatedObject isKindOfClass:[CloudRecordMap class]];
         }]];
@@ -222,12 +225,16 @@ NSNotificationName const DataStackDidInitializeNotification = @"DataStackDidInit
                 NSMutableArray<CKReference *> *messageRefs = [NSMutableArray new];
                 for (Message *message in chat.messages) {
                     NSInteger index = [allObjects indexOfObject:message];
-                    if (index == NSNotFound) continue;
+                    CKRecordID *messageRecordID;
+                    if (index == NSNotFound) {
+                        CKRecordZoneID *zoneID = [[CKRecordZoneID alloc] initWithZoneName:@"MyMessenger" ownerName:CKCurrentUserDefaultName];
+                        messageRecordID = [[[CKRecordID alloc] initWithRecordName:message.cloudRecord.recordName zoneID:zoneID] autorelease];
+                        [zoneID release];
+                    } else {
+                        messageRecordID = [records objectAtIndex:index].recordID;
+                    }
                     
-                    CKRecord *messageRecord = [records objectAtIndex:index];
-                    assert(messageRecord != nil);
-                    
-                    CKReference *reference = [[CKReference alloc] initWithRecord:messageRecord action:CKReferenceActionNone];
+                    CKReference *reference = [[CKReference alloc] initWithRecordID:messageRecordID action:CKReferenceActionNone];
                     [messageRefs addObject:reference];
                     [reference release];
                 }
@@ -244,15 +251,19 @@ NSNotificationName const DataStackDidInitializeNotification = @"DataStackDidInit
                     Chatroom *chat = message.chatroom;
                     assert(chat != nil);
                     
+                    CKRecordID *chatRecordID;
                     NSInteger index = [allObjects indexOfObject:chat];
-                    if (index != NSNotFound) {
-                        CKRecord *chatRecord = [records objectAtIndex:index];
-                        assert(chatRecord != nil);
-                        
-                        CKReference *reference = [[CKReference alloc] initWithRecord:chatRecord action:CKReferenceActionDeleteSelf];
-                        [record setObject:reference forKey:@"chat"];
-                        [reference release];
+                    if (index == NSNotFound) {
+                        CKRecordZoneID *zoneID = [[CKRecordZoneID alloc] initWithZoneName:@"MyMessenger" ownerName:CKCurrentUserDefaultName];
+                        chatRecordID = [[[CKRecordID alloc] initWithRecordName:chat.cloudRecord.recordName zoneID:zoneID] autorelease];
+                        [zoneID release];
+                    } else {
+                        chatRecordID = [records objectAtIndex:index].recordID;
                     }
+                    
+                    CKReference *reference = [[CKReference alloc] initWithRecordID:chatRecordID action:CKReferenceActionDeleteSelf];
+                    [record setObject:reference forKey:@"chat"];
+                    [reference release];
                 }
                 
                 {
@@ -260,14 +271,18 @@ NSNotificationName const DataStackDidInitializeNotification = @"DataStackDidInit
                     assert(user != nil);
                     
                     NSInteger index = [allObjects indexOfObject:user];
-                    if (index != NSNotFound) {
-                        CKRecord *userRecord = [records objectAtIndex:index];
-                        assert(userRecord != nil);
-                        
-                        CKReference *reference = [[CKReference alloc] initWithRecord:userRecord action:CKReferenceActionDeleteSelf];
-                        [record setObject:reference forKey:@"user"];
-                        [reference release];
+                    CKRecordID *userRecordID;
+                    if (index == NSNotFound) {
+                        CKRecordZoneID *zoneID = [[CKRecordZoneID alloc] initWithZoneName:@"MyMessenger" ownerName:CKCurrentUserDefaultName];
+                        userRecordID = [[[CKRecordID alloc] initWithRecordName:user.cloudRecord.recordName zoneID:zoneID] autorelease];
+                        [zoneID release];
+                    } else {
+                        userRecordID = [records objectAtIndex:index].recordID;
                     }
+                    
+                    CKReference *reference = [[CKReference alloc] initWithRecordID:userRecordID action:CKReferenceActionDeleteSelf];
+                    [record setObject:reference forKey:@"user"];
+                    [reference release];
                 }
             } else if ([object isKindOfClass:[User class]]) {
                 auto user = static_cast<User *>(object);
@@ -275,12 +290,16 @@ NSNotificationName const DataStackDidInitializeNotification = @"DataStackDidInit
                 NSMutableArray<CKReference *> *chatRefs = [NSMutableArray new];
                 for (Chatroom *chat in user.chatrooms) {
                     NSInteger index = [allObjects indexOfObject:chat];
-                    if (index == NSNotFound) continue;
+                    CKRecordID *chatRecordID;
+                    if (index == NSNotFound) {
+                        CKRecordZoneID *zoneID = [[CKRecordZoneID alloc] initWithZoneName:@"MyMessenger" ownerName:CKCurrentUserDefaultName];
+                        chatRecordID = [[[CKRecordID alloc] initWithRecordName:chat.cloudRecord.recordName zoneID:zoneID] autorelease];
+                        [zoneID release];
+                    } else {
+                        chatRecordID = [records objectAtIndex:index].recordID;
+                    }
                     
-                    CKRecord *chatRecord = [records objectAtIndex:index];
-                    assert(chatRecord != nil);
-                    
-                    CKReference *reference = [[CKReference alloc] initWithRecord:chatRecord action:CKReferenceActionNone];
+                    CKReference *reference = [[CKReference alloc] initWithRecordID:chatRecordID action:CKReferenceActionNone];
                     [chatRefs addObject:reference];
                     [reference release];
                 }
@@ -292,11 +311,16 @@ NSNotificationName const DataStackDidInitializeNotification = @"DataStackDidInit
                 NSMutableArray<CKReference *> *messageRefs = [NSMutableArray new];
                 for (Message *message in user.messages) {
                     NSInteger index = [allObjects indexOfObject:message];
-                    if (index == NSNotFound) continue;
-                    CKRecord *messageRecord = [records objectAtIndex:index];
-                    assert(message != nil);
+                    CKRecordID *messageRecordID;
+                    if (index == NSNotFound) {
+                        CKRecordZoneID *zoneID = [[CKRecordZoneID alloc] initWithZoneName:@"MyMessenger" ownerName:CKCurrentUserDefaultName];
+                        messageRecordID = [[[CKRecordID alloc] initWithRecordName:message.cloudRecord.recordName zoneID:zoneID] autorelease];
+                        [zoneID release];
+                    } else {
+                        messageRecordID = [records objectAtIndex:index].recordID;
+                    }
                     
-                    CKReference *reference = [[CKReference alloc] initWithRecord:messageRecord action:CKReferenceActionNone];
+                    CKReference *reference = [[CKReference alloc] initWithRecordID:messageRecordID action:CKReferenceActionNone];
                     [messageRefs addObject:reference];
                     [reference release];
                 }
